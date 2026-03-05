@@ -72,7 +72,7 @@ Block type IDs (v1 set)
 0x06 STATUS (len = 10)
 Offset	Size	Field	Type	Notes
 0	4	t_src_sample	u32	sample counter of first EMG sample in the accompanying EMG_RAW frame
-4	2	sample_rate_hz_x100	u16	0 = default/unknown
+4	2	sample_rate_hz	u16	0 = default/unknown
 6	1	battery_pct	u8	0–100, 255 unknown
 7	1	rssi_dbm	i8	-128 unknown
 8	1	mode	u8	0 PhoneOpt, 1 FullStream, 2 Other

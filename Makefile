@@ -5,3 +5,6 @@ recv:
 
 send:
 	$(PY) tools/uf1_send_udp.py --seconds 20 --host 127.0.0.1
+
+view:
+	$(PY) tools/uf1_view.py

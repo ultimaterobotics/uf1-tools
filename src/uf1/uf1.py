@@ -11,16 +11,16 @@ HDR_LEN = 24
 
 # Flags
 TIME_SRC_PRESENT = 1 << 0
-TIME_US_IS_RX     = 1 << 1
-CRC32_PRESENT     = 1 << 2
+TIME_US_IS_RX = 1 << 1
+CRC32_PRESENT = 1 << 2
 
 # Block types
-BLK_EMG_RAW  = 0x01
+BLK_EMG_RAW = 0x01
 BLK_EMG_FFT4 = 0x02
 BLK_IMU_6DOF = 0x03
-BLK_MAG_3    = 0x04
-BLK_QUAT     = 0x05
-BLK_STATUS   = 0x06
+BLK_MAG_3 = 0x04
+BLK_QUAT = 0x05
+BLK_STATUS = 0x06
 
 
 @dataclass
@@ -71,14 +71,14 @@ def decode_tlvs(payload: bytes) -> List[Tuple[int, bytes]]:
         i += 3
         if i + blen > n:
             raise ValueError("Truncated TLV value")
-        out.append((block_type, payload[i:i+blen]))
+        out.append((block_type, payload[i : i + blen]))
         i += blen
     return out
 
 
 def build_status(
     t_src_sample: int,
-    sample_rate_hz_x100: int = 0,
+    sample_rate_hz: int = 0,
     battery_pct: int = 255,
     rssi_dbm: int = -128,
     mode: int = 0,
@@ -88,7 +88,7 @@ def build_status(
     return struct.pack(
         "<IHBbBB",
         t_src_sample & 0xFFFFFFFF,
-        sample_rate_hz_x100 & 0xFFFF,
+        sample_rate_hz & 0xFFFF,
         battery_pct & 0xFF,
         int(rssi_dbm),
         mode & 0xFF,
@@ -102,7 +102,7 @@ def parse_status(v: bytes) -> Dict[str, int]:
     t_src_sample, sr, batt, rssi, mode, sflags = struct.unpack("<IHBbBB", v)
     return {
         "t_src_sample": t_src_sample,
-        "sample_rate_hz_x100": sr,
+        "sample_rate_hz": sr,
         "battery_pct": batt,
         "rssi_dbm": rssi,
         "mode": mode,
@@ -117,7 +117,7 @@ def build_emg_raw(samples_i16: List[int], channel_count: int = 1) -> bytes:
     if len(samples_i16) > 255:
         raise ValueError("too many samples")
     hdr = struct.pack("<BBBB", channel_count, len(samples_i16), 1, 0)
-    body = struct.pack("<" + "h"*len(samples_i16), *samples_i16)
+    body = struct.pack("<" + "h" * len(samples_i16), *samples_i16)
     return hdr + body
 
 
@@ -130,7 +130,7 @@ def parse_emg_raw(v: bytes) -> Dict[str, object]:
     expected = 4 + (ch * n_samp * 2)
     if len(v) != expected:
         raise ValueError(f"EMG_RAW len mismatch: got {len(v)} expected {expected}")
-    samples = list(struct.unpack_from("<" + "h"*(ch*n_samp), v, 4))
+    samples = list(struct.unpack_from("<" + "h" * (ch * n_samp), v, 4))
     return {"channel_count": ch, "samples_per_ch": n_samp, "samples_i16": samples}
 
 
@@ -174,7 +174,9 @@ def encode_frame(
     return frame
 
 
-def decode_frame(frame: bytes) -> Tuple[UF1Header, List[Tuple[int, bytes]], Optional[int]]:
+def decode_frame(
+    frame: bytes,
+) -> Tuple[UF1Header, List[Tuple[int, bytes]], Optional[int]]:
     if len(frame) < HDR_LEN:
         raise ValueError("Frame too short")
 

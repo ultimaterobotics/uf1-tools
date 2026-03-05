@@ -39,7 +39,7 @@ def generate_frames(
 
         status = build_status(
             t_src_sample=t_src_sample,
-            sample_rate_hz_x100=int(sample_rate_hz * 100),
+            sample_rate_hz=int(sample_rate_hz),
             battery_pct=90,
             rssi_dbm=-128,
             mode=0,
