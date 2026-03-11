@@ -1,0 +1,1 @@
+Milestone 3 achieved; Android synthetic bridge verified

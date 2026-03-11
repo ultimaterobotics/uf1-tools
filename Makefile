@@ -8,3 +8,6 @@ send:
 
 view:
 	$(PY) tools/uf1_view.py
+
+advview:
+	$(PY) tools/uf1_adv_view.py

@@ -180,3 +180,32 @@ Confirm t_src_sample is monotonic and steps by 8 each EMG frame.
 Confirm UI shows mode badge (PhoneOpt vs FullStream) deterministically.
 
 Confirm recordings can be replayed and time-aligned using t_src_sample.
+
+
+## Experimental: BLE Advertisement Telemetry Capture (ADV)
+
+UF1 supports a generic way to forward BLE advertisement data without decoding it on the sender (e.g., phone bridge). This is used for:
+- uMyo BLE advertisement telemetry mode (non-connectable)
+- debugging "what's on the air" for prototypes/other sensors
+- later adding device-specific decoders on the PC side
+This block is for telemetry/debug and does not imply raw EMG streaming; raw EMG requires connected GATT.
+
+### Block 0xF0: BLE_ADV_RAW (experimental)
+TLV type: `0xF0`
+
+Value layout:
+- `manufacturer_id` (u16, little-endian): best-effort; if unknown, set to `0xFFFF`
+- `rssi_dbm` (i8): RSSI from scan result; if unknown, set to `-128`
+- `adv_bytes` (bytes[]): raw advertising "AD structures" byte array from the scanner backend
+  - On Android this is `ScanRecord.bytes`
+  - Contains standard BLE AD structures (len, type, value) such as Flags (0x01), Name (0x08/0x09), Manufacturer Data (0xFF), etc.
+
+Notes:
+- The UF1 header `device_id` SHOULD be stable per advertising device. A recommended approach is `CRC32(MAC_address_string)` on the scanning device.
+- `TIME_SRC_PRESENT` is typically unset for ADV frames (no source sample counter).
+
+### Device-specific decoding (optional)
+Device-specific decoders MAY interpret `BLE_ADV_RAW.adv_bytes` and emit additional UF1 blocks for higher-level consumers.
+Example: uMyo v2 advertising manufacturer payload can be decoded into fields such as battery, muscle level, FFT bins, and quaternion.
+
+Decoders live outside the core UF1 transport; unknown devices can still be logged/stored using BLE_ADV_RAW alone.
