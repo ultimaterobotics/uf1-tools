@@ -1,3 +1,5 @@
+# Stream-health probe for UF1 UDP traffic.
+# Use this to verify continuity, per-type frame rates, and missing/gap behavior.
 import socket
 import time
 from dataclasses import dataclass

@@ -1,3 +1,7 @@
+# Advanced one-device UF1 workbench for calibration/debug use.
+# Current focus: single-device EMG/IMU/MAG/QUAT inspection, not polished end-user UX.
+# Example:
+# PYTHONPATH=src python tools/uf1_workbench.py --bind 0.0.0.0 --port 26750
 import argparse
 import math
 import socket

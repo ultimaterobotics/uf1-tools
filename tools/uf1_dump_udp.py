@@ -1,5 +1,6 @@
 import argparse, socket, time, binascii
 from uf1.uf1 import decode_frame
+import struct
 
 
 def main():
@@ -40,6 +41,12 @@ def main():
                 print(
                     f"  BLE_ADV manu=0x{manu:04x} rssi={rssi} payload={binascii.hexlify(payload).decode()}"
                 )
+
+            elif t == 0x04 and len(v) == 6:
+                le = struct.unpack("<hhh", v)
+                be = struct.unpack(">hhh", v)
+                print(f"  MAG raw={binascii.hexlify(v).decode()} le={le} be={be}")
+
     print("done")
 
 
