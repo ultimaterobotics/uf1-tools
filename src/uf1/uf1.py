@@ -21,6 +21,7 @@ BLK_IMU_6DOF = 0x03
 BLK_MAG_3 = 0x04
 BLK_QUAT = 0x05
 BLK_STATUS = 0x06
+BLK_DEVICE_NAME = 0x07
 
 
 @dataclass
@@ -119,6 +120,15 @@ def build_emg_raw(samples_i16: List[int], channel_count: int = 1) -> bytes:
     hdr = struct.pack("<BBBB", channel_count, len(samples_i16), 1, 0)
     body = struct.pack("<" + "h" * len(samples_i16), *samples_i16)
     return hdr + body
+
+
+def parse_device_name(v: bytes) -> Optional[str]:
+    if len(v) < 1 or len(v) > 32:
+        return None
+    try:
+        return v.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
 
 
 def parse_emg_raw(v: bytes) -> Dict[str, object]:

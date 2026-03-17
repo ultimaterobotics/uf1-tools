@@ -1,16 +1,18 @@
 # Stream-health probe for UF1 UDP traffic.
 # Use this to verify continuity, per-type frame rates, and missing/gap behavior.
+import argparse
 import socket
 import time
 from dataclasses import dataclass
 from typing import Optional, Dict
 
-from uf1.uf1 import decode_frame, BLK_STATUS, parse_status
+from uf1.uf1 import decode_frame, BLK_STATUS, parse_status, BLK_DEVICE_NAME, parse_device_name
 
 BLK_EMG_RAW = 0x01
 BLK_IMU_6DOF = 0x03
 BLK_MAG_3 = 0x04
 BLK_QUAT = 0x05
+# BLK_DEVICE_NAME = 0x07  imported from uf1.uf1
 
 
 def mode_name(mode: Optional[int]) -> str:
@@ -28,6 +30,7 @@ class DevStats:
     prev_seq_any: Optional[int] = None
     prev_emg_tsrc: Optional[int] = None
 
+    device_name: Optional[str] = None
     last_mode: Optional[int] = None
     last_sr_hz: Optional[int] = None
     last_batt: Optional[int] = None
@@ -92,8 +95,9 @@ def print_window(devices: Dict[int, DevStats], elapsed: float):
 
         sr_val = ds.last_sr_hz if ds.last_sr_hz is not None else 0
 
+        name_tag = f" ({ds.device_name})" if ds.device_name else ""
         print(
-            f"dev=0x{dev_id:08X} "
+            f"dev=0x{dev_id:08X}{name_tag} "
             f"fps_total={total_fps:.1f} "
             f"emg_fps={emg_fps:.1f} "
             f"quat_fps={quat_fps:.1f} "
@@ -115,100 +119,114 @@ def print_window(devices: Dict[int, DevStats], elapsed: float):
         print()
 
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind(("0.0.0.0", 26750))
-sock.settimeout(0.2)
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--bind", default="0.0.0.0")
+    ap.add_argument("--port", type=int, default=26750)
+    args = ap.parse_args()
 
-print("Listening on UDP 26750...")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((args.bind, args.port))
+    sock.settimeout(0.2)
 
-devices: Dict[int, DevStats] = {}
-win_start = time.time()
+    print(f"Listening on UDP {args.bind}:{args.port}...")
 
-while True:
-    try:
-        data, addr = sock.recvfrom(4096)
-    except socket.timeout:
-        data = None
+    devices: Dict[int, DevStats] = {}
+    win_start = time.time()
 
-    now = time.time()
-    if now - win_start >= 1.0:
-        print_window(devices, now - win_start)
-        win_start = now
+    while True:
+        try:
+            data, addr = sock.recvfrom(4096)
+        except socket.timeout:
+            data = None
 
-    if data is None:
-        continue
+        now = time.time()
+        if now - win_start >= 1.0:
+            print_window(devices, now - win_start)
+            win_start = now
 
-    try:
-        hdr, blocks, _ = decode_frame(data)
-    except Exception:
-        continue
+        if data is None:
+            continue
 
-    dev_id = hdr.device_id
-    ds = devices.setdefault(dev_id, DevStats())
+        try:
+            hdr, blocks, _ = decode_frame(data)
+        except Exception:
+            continue
 
-    st = None
-    has_emg = False
-    has_quat = False
-    has_aux = False
+        dev_id = hdr.device_id
+        ds = devices.setdefault(dev_id, DevStats())
 
-    for t, v in blocks:
-        if t == BLK_STATUS:
-            st = parse_status(v)
-        elif t == BLK_EMG_RAW:
-            has_emg = True
-        elif t == BLK_QUAT:
-            has_quat = True
-        elif t == BLK_IMU_6DOF or t == BLK_MAG_3:
-            has_aux = True
+        st = None
+        has_emg = False
+        has_quat = False
+        has_aux = False
 
-    ds.total_frames += 1
+        for t, v in blocks:
+            if t == BLK_STATUS:
+                st = parse_status(v)
+            elif t == BLK_DEVICE_NAME:
+                name = parse_device_name(v)
+                if name is not None:
+                    ds.device_name = name
+            elif t == BLK_EMG_RAW:
+                has_emg = True
+            elif t == BLK_QUAT:
+                has_quat = True
+            elif t == BLK_IMU_6DOF or t == BLK_MAG_3:
+                has_aux = True
 
-    if ds.prev_seq_any is not None:
-        seq_step = (hdr.seq - ds.prev_seq_any) & 0xFFFFFFFF
-        if seq_step > 1:
-            ds.seq_gaps_any += seq_step - 1
-    ds.prev_seq_any = hdr.seq
+        ds.total_frames += 1
 
-    if st is not None:
-        mode = st.get("mode")
-        sr = st.get("sample_rate_hz")
-        batt = st.get("battery_pct")
-
-        if mode is not None:
-            ds.last_mode = mode
-
-        if sr is not None and sr != 0:
-            ds.last_sr_hz = sr
-
-        if batt is not None and batt != 255:
-            ds.last_batt = batt
-
-    if has_emg:
-        ds.emg_frames += 1
+        if ds.prev_seq_any is not None:
+            seq_step = (hdr.seq - ds.prev_seq_any) & 0xFFFFFFFF
+            if seq_step > 1:
+                ds.seq_gaps_any += seq_step - 1
+        ds.prev_seq_any = hdr.seq
 
         if st is not None:
-            tsrc = st.get("t_src_sample")
-            if tsrc is not None:
-                if ds.tsrc_first is None:
-                    ds.tsrc_first = tsrc
-                ds.tsrc_last = tsrc
+            mode = st.get("mode")
+            sr = st.get("sample_rate_hz")
+            batt = st.get("battery_pct")
 
-                if ds.prev_emg_tsrc is not None:
-                    step = (tsrc - ds.prev_emg_tsrc) & 0xFFFFFFFF
-                    ds.step_sum += step
-                    ds.step_count += 1
+            if mode is not None:
+                ds.last_mode = mode
 
-                    if step > 8:
-                        ds.emg_big_steps += 1
-                        ds.emg_missing_chunks += max(0, step // 8 - 1)
+            if sr is not None and sr != 0:
+                ds.last_sr_hz = sr
 
-                    if step != 8 and (step % 8) != 0:
-                        ds.emg_bad_steps += 1
+            if batt is not None and batt != 255:
+                ds.last_batt = batt
 
-                ds.prev_emg_tsrc = tsrc
+        if has_emg:
+            ds.emg_frames += 1
 
-    if has_quat:
-        ds.quat_frames += 1
+            if st is not None:
+                tsrc = st.get("t_src_sample")
+                if tsrc is not None:
+                    if ds.tsrc_first is None:
+                        ds.tsrc_first = tsrc
+                    ds.tsrc_last = tsrc
 
-    if has_aux:
-        ds.aux_frames += 1
+                    if ds.prev_emg_tsrc is not None:
+                        step = (tsrc - ds.prev_emg_tsrc) & 0xFFFFFFFF
+                        ds.step_sum += step
+                        ds.step_count += 1
+
+                        if step > 8:
+                            ds.emg_big_steps += 1
+                            ds.emg_missing_chunks += max(0, step // 8 - 1)
+
+                        if step != 8 and (step % 8) != 0:
+                            ds.emg_bad_steps += 1
+
+                    ds.prev_emg_tsrc = tsrc
+
+        if has_quat:
+            ds.quat_frames += 1
+
+        if has_aux:
+            ds.aux_frames += 1
+
+
+if __name__ == "__main__":
+    main()

@@ -66,6 +66,8 @@ Block type IDs (v1 set)
 
 0x06 STATUS
 
+0x07 DEVICE_NAME
+
 (Additional types can be added later; parsers ignore unknown types using len.)
 
 5) Block layouts (v1)
@@ -118,6 +120,12 @@ bin0, bin1, bin2, bin3
 3× int16:
 
 mx, my, mz
+
+0x07 DEVICE_NAME (len = 1–32)
+
+UTF-8 string. No null terminator. Sent once per device at stream start.
+Receivers MUST accept any len in [1, 32]; silently ignore if len = 0 or len > 32.
+Intended as a human-readable label (e.g. BLE advertised name or user-assigned alias).
 
 6) CRC32 (optional)
 

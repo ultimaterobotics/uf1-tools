@@ -13,7 +13,7 @@ from typing import Deque, Dict, List, Optional, Tuple
 
 import pygame
 
-from uf1.uf1 import decode_frame, BLK_STATUS, BLK_EMG_RAW, parse_status, parse_emg_raw
+from uf1.uf1 import decode_frame, BLK_STATUS, BLK_EMG_RAW, parse_status, parse_emg_raw, BLK_DEVICE_NAME, parse_device_name
 
 BLK_IMU_6DOF = 0x03
 BLK_MAG_3 = 0x04
@@ -24,6 +24,7 @@ PORT_DEFAULT = 26750
 @dataclass
 class DevState:
     device_id: int
+    device_name: Optional[str] = None
     sample_rate_hz: float = 1150.0
     battery_pct: int = 255
     mode: int = 0
@@ -371,6 +372,10 @@ def main():
                     quat = parse_i16x4(val)
                     if quat is not None:
                         st.append_quat(quat)
+                elif bt == BLK_DEVICE_NAME:
+                    name = parse_device_name(val)
+                    if name is not None:
+                        st.device_name = name
 
             st.update_rates(now)
             if selected_dev is None:
@@ -387,7 +392,8 @@ def main():
             pieces = []
             for d in dev_ids:
                 mark = "*" if d == selected_dev else " "
-                pieces.append(f"{mark}0x{d:08X}")
+                name_tag = f" ({devices[d].device_name})" if devices[d].device_name else ""
+                pieces.append(f"{mark}0x{d:08X}{name_tag}")
             header += "   ".join(pieces)
         else:
             header += "(none yet)"
@@ -415,7 +421,10 @@ def main():
             int((now - st.last_aux_time) * 1000) if st.last_aux_time > 0 else -1
         )
 
-        draw_text(screen, font, 14, 76, f"Device 0x{selected_dev:08X}")
+        dev_title = f"Device 0x{selected_dev:08X}"
+        if st.device_name:
+            dev_title += f"  {st.device_name}"
+        draw_text(screen, font, 14, 76, dev_title)
         draw_text(
             screen,
             font_small,
