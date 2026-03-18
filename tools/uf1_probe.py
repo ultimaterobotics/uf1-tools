@@ -35,6 +35,7 @@ class DevStats:
     last_sr_hz: Optional[int] = None
     last_batt: Optional[int] = None
 
+    frames_total_cumulative: int = 0
     total_frames: int = 0
     emg_frames: int = 0
     quat_frames: int = 0
@@ -98,6 +99,7 @@ def print_window(devices: Dict[int, DevStats], elapsed: float):
         name_tag = f" ({ds.device_name})" if ds.device_name else ""
         print(
             f"dev=0x{dev_id:08X}{name_tag} "
+            f"frames_total={ds.frames_total_cumulative} "
             f"fps_total={total_fps:.1f} "
             f"emg_fps={emg_fps:.1f} "
             f"quat_fps={quat_fps:.1f} "
@@ -132,6 +134,7 @@ def main():
     print(f"Listening on UDP {args.bind}:{args.port}...")
 
     devices: Dict[int, DevStats] = {}
+    name_announced: set = set()
     win_start = time.time()
 
     while True:
@@ -165,6 +168,9 @@ def main():
             if t == BLK_STATUS:
                 st = parse_status(v)
             elif t == BLK_DEVICE_NAME:
+                if dev_id not in name_announced:
+                    print(f"[0x07 DEVICE_NAME] first seen for dev=0x{dev_id:08X} len={len(v)}")
+                    name_announced.add(dev_id)
                 name = parse_device_name(v)
                 if name is not None:
                     ds.device_name = name
@@ -176,6 +182,7 @@ def main():
                 has_aux = True
 
         ds.total_frames += 1
+        ds.frames_total_cumulative += 1
 
         if ds.prev_seq_any is not None:
             seq_step = (hdr.seq - ds.prev_seq_any) & 0xFFFFFFFF
