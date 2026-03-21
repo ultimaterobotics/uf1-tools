@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>uMyo Workbench</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0f12;--bg-row:#131619;--bg-panel:#1a1d22;--text:#e0e6ed;--text2:#7a8899;--text3:#b8c8d8;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14)}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden;height:100vh}
+
+.header{display:flex;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg-row);gap:14px;flex-shrink:0;height:46px}
+.brand{font-size:15px;font-weight:700;letter-spacing:-0.01em}
+.brand em{color:#00e5c4;font-style:normal}
+.conn-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);background:var(--bg-panel);border:1px solid var(--border2);padding:3px 10px;border-radius:20px;cursor:default}
+.dot{width:6px;height:6px;border-radius:50%;background:#7a8899}
+.dot.live{background:#00e5c4;animation:blink 2s ease-in-out infinite}
+.dot.sim{background:#ffaa00;animation:blink 2s ease-in-out infinite}
+.dot.err{background:#ff6b6b}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+.header-right{margin-left:auto;display:flex;gap:7px;align-items:center}
+.btn{background:var(--bg-panel);border:1px solid var(--border2);color:var(--text);padding:5px 13px;border-radius:5px;font-size:12px;cursor:pointer;transition:background .12s;white-space:nowrap}
+.btn:hover{background:#22262d}
+.btn-primary{background:#00e5c4;color:#080a0c;border-color:#00e5c4;font-weight:600}
+.btn-primary:hover{background:#00cfb4}
+.btn-rec{border-color:#ff6b6b;color:#ff6b6b}.btn-rec:hover{background:rgba(255,107,107,.1)}
+.btn-detail{display:flex;align-items:center;gap:6px}
+.toggle-box{width:12px;height:12px;border-radius:2px;border:1px solid var(--text2);flex-shrink:0;transition:.12s}
+.btn-detail.on .toggle-box{background:#00e5c4;border-color:#00e5c4}
+.btn-detail.on{border-color:rgba(0,229,196,.4);color:#00e5c4}
+.rec-dot{display:none;width:7px;height:7px;border-radius:50%;background:#ff6b6b;animation:blink .9s ease-in-out infinite}
+.speed-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.speed-wrap input[type=range]{width:72px;accent-color:#00e5c4;cursor:pointer}
+
+.devices{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.device-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border);flex:1;min-height:0}
+.device-row:last-child{border-bottom:none}
+.device-row::before{content:'';width:3px;background:var(--dc);flex-shrink:0}
+
+.info{width:182px;flex-shrink:0;padding:11px 13px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.dev-name{font-size:15px;font-weight:700;color:var(--dc);font-family:ui-monospace,monospace;letter-spacing:.02em}
+.dev-id{font-size:10px;color:var(--text2);font-family:ui-monospace,monospace;letter-spacing:.04em}
+.sbadge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;width:fit-content;background:rgba(0,229,196,.1);color:#00e5c4}
+.sbadge.sim{background:rgba(255,170,0,.1);color:#ffaa00}
+.metrics{display:flex;flex-direction:column;gap:3px}
+.mrow{display:flex;justify-content:space-between;align-items:baseline}
+.ml{font-size:10px;color:var(--text2)}.mv{font-family:ui-monospace,monospace;font-size:11px;color:var(--text3)}
+.mv.g{color:#00e5c4}.mv.w{color:#ffaa00}.mv.b{color:#ff6b6b}
+.actions{margin-top:auto;display:flex;gap:5px}
+.abtn{flex:1;padding:4px 0;font-size:10px;border-radius:4px;background:var(--bg-panel);border:1px solid var(--border2);color:var(--text2);cursor:pointer;text-align:center;transition:all .12s;letter-spacing:.04em;text-transform:uppercase}
+.abtn:hover{border-color:var(--dc);color:var(--dc)}
+
+.emg-panel{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border)}
+.panel-lbl{font-size:9px;color:var(--text2);padding:5px 10px 0;letter-spacing:.1em;text-transform:uppercase;flex-shrink:0}
+.emg-wrap{flex:1;min-height:0;position:relative}
+.emg-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.spec-area{flex-shrink:0;border-top:1px solid var(--border)}
+.spec-wrap{position:relative;height:40px}
+.spec-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.hz-axis{display:none;height:15px;width:100%}
+body.detail .hz-axis{display:block}
+
+.imu{width:198px;flex-shrink:0;padding:8px 11px;display:flex;flex-direction:column;gap:5px}
+.imu-sec{display:flex;flex-direction:column;gap:2px}
+.imu-lbl{font-size:9px;color:var(--text2);letter-spacing:.1em;text-transform:uppercase}
+.imu-vals{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.ival{font-family:ui-monospace,monospace;font-size:10px;color:var(--text3);text-align:right}
+.sparkline-wrap{height:22px;position:relative}
+.sparkline-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.ori-wrap{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px}
+.quat-grid{display:none;grid-template-columns:repeat(2,1fr);gap:1px 6px}
+body.detail .quat-grid{display:grid}
+.qv{font-family:ui-monospace,monospace;font-size:9px;color:var(--text2)}.qv span{color:var(--text3)}
+
+.footer{padding:8px 18px;border-top:1px solid var(--border);background:var(--bg-row);display:flex;align-items:center;gap:10px;flex-shrink:0;height:36px}
+.f-status{font-size:11px;color:var(--text2)}.f-stat{margin-left:auto;font-family:ui-monospace,monospace;font-size:10px;color:var(--text2)}
+
+.waiting{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--text2)}
+.waiting h2{font-size:18px;font-weight:500;color:var(--text)}
+.waiting code{font-size:13px;background:var(--bg-panel);border:1px solid var(--border2);padding:8px 16px;border-radius:6px;color:#00e5c4;font-family:ui-monospace,monospace}
+.waiting p{font-size:12px;text-align:center;line-height:1.6;max-width:400px}
+
+.cal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center}
+.cal-overlay.show{display:flex}
+.cal-box{background:#1a1d22;border:1px solid var(--border2);border-radius:10px;padding:24px;width:360px;display:flex;flex-direction:column;gap:16px}
+.cal-title{font-size:15px;font-weight:600}.cal-desc{font-size:12px;color:var(--text2);line-height:1.5}
+.cal-steps{display:flex;flex-direction:column;gap:8px}
+.cal-step{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg-row);border-radius:6px;border:1px solid var(--border)}
+.step-num{width:22px;height:22px;border-radius:50%;color:#080a0c;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-txt{font-size:11px}
+.cal-btns{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="brand">u<em>Myo</em> Workbench</div>
+  <div class="conn-pill"><div class="dot" id="connDot"></div><span id="connLabel">connecting…</span></div>
+  <div class="header-right">
+    <div class="speed-wrap"><label for="speedSlider">Speed</label><input type="range" id="speedSlider" min="1" max="20" value="6" oninput="SAMPLES_PER_FRAME=+this.value"></div>
+    <button class="btn btn-detail" id="detailBtn" onclick="toggleDetail()"><div class="toggle-box"></div>Details</button>
+    <button class="btn" onclick="showCal()">Calibration</button>
+    <div class="rec-dot" id="recDot"></div>
+    <button class="btn btn-rec" id="recBtn" onclick="toggleRec()">● Record</button>
+    <button class="btn btn-primary" onclick="exportAll()">Export CSV</button>
+  </div>
+</div>
+
+<div id="waitScreen" class="waiting">
+  <h2>Waiting for devices…</h2>
+  <code>python tools/uf1_workbench_server.py</code>
+  <p>Run the server in your uf1-tools environment, then start streaming from the Android app. Devices will appear automatically.</p>
+</div>
+<div class="devices" id="devices" style="display:none"></div>
+
+<div class="footer">
+  <div class="f-status" id="fStatus">No connection</div>
+  <div class="f-stat" id="fStat">uptime 0:00</div>
+</div>
+
+<div class="cal-overlay" id="calOverlay">
+  <div class="cal-box">
+    <div class="cal-title">IMU Calibration</div>
+    <div class="cal-desc">Place each sensor flat on a stable surface. Calibration writes to flash and survives firmware updates.</div>
+    <div class="cal-steps" id="calSteps"></div>
+    <div class="cal-btns"><button class="btn" onclick="hideCal()">Cancel</button><button class="btn btn-primary" onclick="runCal()">Start</button></div>
+  </div>
+</div>
+
+<script>
+// ── config ────────────────────────────────────────────────────────────────
+const WS_URL = 'ws://localhost:8765';
+const COLORS = ['#00e5c4','#ffaa00','#cc88ff','#ff6b6b','#5ac8fa','#4cd964'];
+const BINS = 32, SR = 1150;
+const EMG_BUF_LEN = Math.ceil(SR * 2.5); // match Python: sample_rate * window_sec
+let SAMPLES_PER_FRAME = 6;
+
+// ── state ─────────────────────────────────────────────────────────────────
+let liveDevices = {};      // id -> {state from server}
+let rows = {};             // id -> {dom refs, emgBuf, specBuf, accH, gyrH, colorIdx, tick}
+let colorIdx = 0;
+let detailOn = false, isRec = false, recStart = 0;
+let startTime = Date.now(), frame = 0, tick = 0;
+let wsMode = false;        // true = live WS, false = simulated
+
+// ── WebSocket ─────────────────────────────────────────────────────────────
+function connect() {
+  const ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    wsMode = true;
+    setConn('live', '● live');
+    document.getElementById('fStatus').textContent = 'Streaming';
+  };
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'state') handleState(msg.devices);
+    } catch {}
+  };
+  ws.onclose = () => {
+    wsMode = false;
+    setConn('err', 'reconnecting…');
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = () => {};
+}
+
+function setConn(cls, label) {
+  const dot = document.getElementById('connDot');
+  dot.className = 'dot ' + cls;
+  document.getElementById('connLabel').textContent = label;
+}
+
+function handleState(devList) {
+  devList.forEach(d => {
+    liveDevices[d.id] = d;
+    ensureRow(d.id, d.name);
+    updateRowLive(d.id, d);
+  });
+  // Remove rows for devices not seen in this update
+  const ids = new Set(devList.map(d => d.id));
+  Object.keys(rows).forEach(id => { if (!ids.has(id)) removeRow(id); });
+  syncVisibility();
+  // Update connection label
+  const n = devList.length;
+  document.getElementById('connLabel').textContent = `● live · ${n} device${n !== 1 ? 's' : ''}`;
+}
+
+// ── Row management ────────────────────────────────────────────────────────
+function ensureRow(id, name) {
+  if (rows[id]) return;
+  const color = COLORS[colorIdx % COLORS.length]; colorIdx++;
+  const row = document.createElement('div');
+  row.className = 'device-row'; row.style.cssText = `--dc:${color}`; row.id = `row_${id}`;
+  row.innerHTML = rowHTML(id, name, color, wsMode);
+  document.getElementById('devices').appendChild(row);
+  rows[id] = {
+    color, row,
+    emgBuf: new Float32Array(EMG_BUF_LEN).fill(0),
+    specBuf: new Float32Array(BINS).fill(0),
+    accH: {x:[],y:[],z:[]}, gyrH: {x:[],y:[],z:[]},
+    lastQuat: null, quatLastSeen: 0,
+    auxLastSeen: 0,
+    // sim state
+    act:.04, actT:.04, actTimer:0, phase:Math.random()*Math.PI*2, simTick:0,
+  };
+}
+
+function removeRow(id) {
+  const r = rows[id]; if (!r) return;
+  r.row.remove(); delete rows[id]; delete liveDevices[id];
+}
+
+function syncVisibility() {
+  const hasDevs = Object.keys(rows).length > 0;
+  document.getElementById('waitScreen').style.display = hasDevs ? 'none' : 'flex';
+  document.getElementById('devices').style.display = hasDevs ? 'flex' : 'none';
+}
+
+function rowHTML(id, name, color, live) {
+  const safe = id.replace(/[^a-zA-Z0-9]/g,'_');
+  const badge = live ? '● Streaming' : '◌ Simulated';
+  const bclass = live ? '' : 'sim';
+  return `<div class="info">
+    <div class="dev-name" id="dn_${safe}">${name}</div>
+    <div class="dev-id">${id}</div>
+    <span class="sbadge ${bclass}" id="badge_${safe}">${badge}</span>
+    <div class="metrics">
+      <div class="mrow"><span class="ml">EMG fps</span><span class="mv g" id="ef_${safe}">—</span></div>
+      <div class="mrow"><span class="ml">Quat fps</span><span class="mv" id="qf_${safe}">—</span></div>
+      <div class="mrow"><span class="ml">Seq gaps</span><span class="mv g" id="gp_${safe}">0</span></div>
+      <div class="mrow"><span class="ml">Avg tsrc Δ</span><span class="mv" id="ts_${safe}">—</span></div>
+      <div class="mrow"><span class="ml">Battery</span><span class="mv" id="bt_${safe}">??</span></div>
+    </div>
+    <div class="actions">
+      <div class="abtn" onclick="calDev('${id}')">Calibrate</div>
+      <div class="abtn" onclick="exportDev('${id}')">Export</div>
+    </div>
+  </div>
+  <div class="emg-panel">
+    <div class="panel-lbl">EMG waveform</div>
+    <div class="emg-wrap"><canvas id="emg_${safe}"></canvas></div>
+    <div class="spec-area">
+      <div class="panel-lbl">Spectrum</div>
+      <div class="spec-wrap"><canvas id="sp_${safe}"></canvas></div>
+      <canvas class="hz-axis" id="hz_${safe}" height="15"></canvas>
+    </div>
+  </div>
+  <div class="imu">
+    <div class="imu-sec">
+      <div class="imu-lbl">Accelerometer</div>
+      <div class="imu-vals">
+        <div class="ival" id="ax_${safe}">—</div>
+        <div class="ival" id="ay_${safe}">—</div>
+        <div class="ival" id="az_${safe}">—</div>
+      </div>
+      <div class="sparkline-wrap"><canvas id="as_${safe}"></canvas></div>
+    </div>
+    <div class="imu-sec">
+      <div class="imu-lbl">Gyroscope</div>
+      <div class="imu-vals">
+        <div class="ival" id="gx_${safe}">—</div>
+        <div class="ival" id="gy_${safe}">—</div>
+        <div class="ival" id="gz_${safe}">—</div>
+      </div>
+      <div class="sparkline-wrap"><canvas id="gs_${safe}"></canvas></div>
+    </div>
+    <div class="imu-sec" style="flex:1">
+      <div class="imu-lbl">Orientation</div>
+      <div class="ori-wrap">
+        <canvas id="ori_${safe}" width="80" height="60"></canvas>
+        <div class="quat-grid" id="qg_${safe}">
+          <div class="qv">qw <span id="qw_${safe}">—</span></div>
+          <div class="qv">qx <span id="qx_${safe}">—</span></div>
+          <div class="qv">qy <span id="qy_${safe}">—</span></div>
+          <div class="qv">qz <span id="qz_${safe}">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Live data update ──────────────────────────────────────────────────────
+function updateRowLive(id, d) {
+  const safe = id.replace(/[^a-zA-Z0-9]/g,'_');
+  const r = rows[id]; if (!r) return;
+
+  setText(`ef_${safe}`, d.emg_fps + ' fps', 'g');
+  setText(`qf_${safe}`, d.quat_fps + ' fps');
+  const gapCls = d.seq_gaps > 0 ? 'b' : 'g';
+  setText(`gp_${safe}`, d.seq_gaps, gapCls);
+  setText(`ts_${safe}`, d.avg_tsrc_step);
+  setText(`bt_${safe}`, d.batt != null ? d.batt + '%' : '??');
+  setText(`dn_${safe}`, d.name);
+
+  // Feed EMG samples into ring buffer
+  if (d.emg && d.emg.length) {
+    const norm = 1 / 32767;
+    d.emg.forEach(v => {
+      r.emgBuf.copyWithin(0, 1);
+      r.emgBuf[r.emgBuf.length - 1] = v * norm;
+    });
+  }
+
+  // Quat → 3D (raw int16 values from firmware, ±32767 = ±1.0)
+  // Only advance quatLastSeen when the server confirms a fresh quat block arrived this cycle.
+  if (d.quat && Object.keys(d.quat).length > 0) {
+    const q = d.quat;
+    r.lastQuat = q;
+    if (d.quat_fresh) r.quatLastSeen = Date.now();
+    setText(`qw_${safe}`, q.qw ?? '—');
+    setText(`qx_${safe}`, q.qx ?? '—');
+    setText(`qy_${safe}`, q.qy ?? '—');
+    setText(`qz_${safe}`, q.qz ?? '—');
+  }
+
+  // Aux → acc/gyr; only push history when server confirms fresh aux this cycle.
+  if (d.aux && Object.keys(d.aux).length > 0) {
+    const a = d.aux;
+    setText(`ax_${safe}`, a.ax ?? '—'); setText(`ay_${safe}`, a.ay ?? '—'); setText(`az_${safe}`, a.az ?? '—');
+    setText(`gx_${safe}`, a.gx ?? '—'); setText(`gy_${safe}`, a.gy ?? '—'); setText(`gz_${safe}`, a.gz ?? '—');
+    if (d.aux_fresh) {
+      r.auxLastSeen = Date.now();
+      pushHistory(r.accH, a.ax ?? 0, a.ay ?? 0, a.az ?? 0);
+      pushHistory(r.gyrH, a.gx ?? 0, a.gy ?? 0, a.gz ?? 0);
+    }
+  }
+}
+
+function setText(id, val, cls) {
+  const el = document.getElementById(id); if (!el) return;
+  el.textContent = val;
+  if (cls) el.className = 'mv ' + cls; else el.className = 'mv';
+}
+
+function pushHistory(h, x, y, z) {
+  h.x.push(x); h.y.push(y); h.z.push(z);
+  if (h.x.length > 80) { h.x.shift(); h.y.shift(); h.z.shift(); }
+}
+
+// ── Simulation (fallback when no WS) ─────────────────────────────────────
+const SIM_DEVS = [
+  {id:'0xC853BE1C',name:'uMyo-DC4C'},
+  {id:'0xDFACE6DB',name:'uMyo-E14A'},
+  {id:'0xEF643DD2',name:'uMyo-AB91'},
+];
+
+function initSim() {
+  SIM_DEVS.forEach(d => {
+    ensureRow(d.id, d.name);
+    const r = rows[d.id];
+    r.act = .04; r.actT = .04; r.actTimer = 0; r.phase = Math.random()*Math.PI*2; r.simTick = 0;
+  });
+  setConn('sim', '◌ simulated · 3 devices');
+  document.getElementById('fStatus').textContent = 'Simulation mode — run uf1_workbench_server.py to connect';
+  syncVisibility();
+}
+
+function simStep(r) {
+  r.simTick++;
+  r.actTimer--;
+  if (r.actTimer <= 0) {
+    r.actT = Math.random() < .28 ? (.3 + Math.random()*.7) : (.02 + Math.random()*.04);
+    r.actTimer = 50 + Math.random()*100|0;
+  }
+  r.act += (r.actT - r.act) * .06;
+  const a = r.act, t = r.simTick;
+  const v = Math.sin(t*.19+r.phase)*a*.38 + Math.sin(t*.43+r.phase*1.4)*a*.22
+           + Math.sin(t*.81+r.phase*.6)*a*.18 + (Math.random()-.5)*a*.88 + (Math.random()-.5)*.012;
+  r.emgBuf.copyWithin(0,1); r.emgBuf[r.emgBuf.length-1] = v;
+  // spec
+  for (let b = 0; b < BINS; b++) {
+    const pk = b>=3&&b<=11 ? (1-Math.abs(b-7)/5)*a*1.1 : 0;
+    r.specBuf[b] = r.specBuf[b]*.72 + Math.max(0, pk + Math.random()*.07*a)*.28;
+  }
+  // fake imu
+  const si = (s) => (Math.sin(t*.015+s)*.4+(Math.random()-.5)*.08)*1000|0;
+  pushHistory(r.accH, si(1.1), si(1.7), si(.9)+9810);
+  pushHistory(r.gyrH, si(3), si(4), si(5));
+}
+
+// ── Drawing ───────────────────────────────────────────────────────────────
+function hexA(hex, a) {
+  const[r,g,b]=hex.match(/\w\w/g).slice(0,3).map(x=>parseInt(x,16));
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function drawEMG(safe, r) {
+  const c = document.getElementById(`emg_${safe}`); if (!c) return;
+  const W = c.parentElement.clientWidth, H = c.parentElement.clientHeight; if (!W||!H) return;
+  c.width=W; c.height=H;
+  const ctx = c.getContext('2d'), buf = r.emgBuf, N = buf.length;
+  ctx.fillStyle='#080a0c'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=.5;
+  for(let y=1;y<4;y++){ctx.beginPath();ctx.moveTo(0,H*y/4);ctx.lineTo(W,H*y/4);ctx.stroke()}
+  for(let x=1;x<8;x++){ctx.beginPath();ctx.moveTo(W*x/8,0);ctx.lineTo(W*x/8,H);ctx.stroke()}
+  ctx.strokeStyle='rgba(255,255,255,.09)'; ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
+  // Auto-scale: match Python draw_waveform — min/max of buffer, ×0.42 half-height
+  let mn = buf[0], mx = buf[0];
+  for (let i = 1; i < N; i++) { if (buf[i] < mn) mn = buf[i]; if (buf[i] > mx) mx = buf[i]; }
+  const span = Math.max(1e-6, mx - mn), mid = (mx + mn) / 2;
+  ctx.beginPath(); ctx.strokeStyle=r.color; ctx.lineWidth=1.4;
+  for(let x=0;x<W;x++){const idx=x/W*N|0,y=H/2-((buf[idx]-mid)/span)*(H*.42); x===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}
+  ctx.stroke();
+}
+
+function drawSpec(safe, r) {
+  const c = document.getElementById(`sp_${safe}`); if (!c) return;
+  const W = c.parentElement.clientWidth; c.width=W; c.height=40;
+  const ctx = c.getContext('2d'), bins = r.specBuf, bw = W/bins.length;
+  ctx.fillStyle='#080a0c'; ctx.fillRect(0,0,W,40);
+  for(let b=0;b<bins.length;b++){
+    const h=bins[b]*36; ctx.fillStyle=hexA(r.color,.4+bins[b]*.55);
+    ctx.fillRect(b*bw+.5,40-h,bw-1,h);
+  }
+}
+
+function buildHz(safe) {
+  const c = document.getElementById(`hz_${safe}`); if (!c) return;
+  const W = c.parentElement.clientWidth; c.width=W; c.height=15;
+  const ctx = c.getContext('2d'); ctx.clearRect(0,0,W,15);
+  const nyq = SR/2;
+  [0,50,100,150,200,300,400,500].forEach(hz => {
+    const x = hz/nyq*W;
+    ctx.fillStyle='rgba(122,136,153,0.65)'; ctx.font='8px ui-monospace,monospace'; ctx.textAlign='center';
+    ctx.fillRect(x,0,1,4);
+    if (hz>0&&hz<nyq-20) ctx.fillText(hz+'Hz',x,13);
+  });
+}
+
+function drawSpark(id, data, cols) {
+  const c = document.getElementById(id); if (!c||!data[0]||data[0].length<2) return;
+  const W = c.parentElement.clientWidth; c.width=Math.max(W,10); c.height=22;
+  const ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,22);
+  data.forEach((arr,ci)=>{
+    if(arr.length<2)return;
+    ctx.beginPath(); ctx.strokeStyle=cols[ci]; ctx.lineWidth=1;
+    for(let x=0;x<c.width;x++){const idx=Math.floor(x/c.width*arr.length),y=11-arr[idx]/2000*10;x===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}
+    ctx.stroke();
+  });
+}
+
+function draw3D(safe, r) {
+  const c = document.getElementById(`ori_${safe}`); if (!c) return;
+  c.width=80; c.height=60; const ctx=c.getContext('2d'); ctx.clearRect(0,0,80,60);
+  const V=[[-18,-2,-11],[18,-2,-11],[18,-2,11],[-18,-2,11],[-18,2,-11],[18,2,-11],[18,2,11],[-18,2,11]];
+
+  let rot;
+  const q = r.lastQuat;
+  const quatFresh = r.quatLastSeen && (Date.now() - r.quatLastSeen < 500);
+  if (q && q.qw != null && quatFresh) {
+    // Normalize raw int16 (±32767 = ±1.0) to unit quaternion
+    const s = 1/32767;
+    let qw=q.qw*s, qx=q.qx*s, qy=q.qy*s, qz=q.qz*s;
+    const n = Math.sqrt(qw*qw+qx*qx+qy*qy+qz*qz) || 1;
+    qw/=n; qx/=n; qy/=n; qz/=n;
+    // Build 3×3 rotation matrix from unit quaternion
+    const R = [
+      [1-2*(qy*qy+qz*qz), 2*(qx*qy-qw*qz),   2*(qx*qz+qw*qy)  ],
+      [2*(qx*qy+qw*qz),   1-2*(qx*qx+qz*qz), 2*(qy*qz-qw*qx)  ],
+      [2*(qx*qz-qw*qy),   2*(qy*qz+qw*qx),   1-2*(qx*qx+qy*qy)],
+    ];
+    rot = ([x,y,z]) => [
+      R[0][0]*x+R[0][1]*y+R[0][2]*z,
+      R[1][0]*x+R[1][1]*y+R[1][2]*z,
+      R[2][0]*x+R[2][1]*y+R[2][2]*z,
+    ];
+  } else {
+    // Fallback: simulated Euler rotation when no live quat available
+    const t = r.simTick*.006 || (tick*.006);
+    const rx=Math.sin(t*.7)*.6, ry=t*.4, rz=Math.sin(t*.5)*.25;
+    rot = ([x,y,z]) => {
+      let ny=y*Math.cos(rx)-z*Math.sin(rx),nz=y*Math.sin(rx)+z*Math.cos(rx);[y,z]=[ny,nz];
+      let nx=x*Math.cos(ry)+z*Math.sin(ry);nz=-x*Math.sin(ry)+z*Math.cos(ry);[x,z]=[nx,nz];
+      let nx2=x*Math.cos(rz)-y*Math.sin(rz);ny=x*Math.sin(rz)+y*Math.cos(rz);return[nx2,ny,nz];
+    };
+  }
+
+  const rv=V.map(rot), pv=rv.map(v=>[v[0]/(v[2]+42)*62+40,v[1]/(v[2]+42)*62+30]);
+  const faces=[{idx:[0,1,2,3],b:.25},{idx:[4,5,6,7],b:.08},{idx:[0,1,5,4],b:.16},{idx:[1,2,6,5],b:.18},{idx:[2,3,7,6],b:.16},{idx:[3,0,4,7],b:.12}];
+  faces.sort((a,b2)=>rv[a.idx[0]][2]-rv[b2.idx[0]][2]);
+  const[rr,gg,bb]=r.color.match(/\w\w/g).slice(0,3).map(x=>parseInt(x,16));
+  faces.forEach(f=>{
+    const pts=f.idx.map(k=>pv[k]);
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let k=1;k<pts.length;k++)ctx.lineTo(pts[k][0],pts[k][1]);ctx.closePath();
+    ctx.fillStyle=`rgba(${rr},${gg},${bb},${f.b})`;ctx.strokeStyle=`rgba(${rr},${gg},${bb},.5)`;ctx.lineWidth=.8;ctx.fill();ctx.stroke();
+  });
+  const up=rot([0,-14,0]),tp=[up[0]/(up[2]+42)*62+40,up[1]/(up[2]+42)*62+30];
+  ctx.strokeStyle='rgba(90,230,120,.75)';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(40,30);ctx.lineTo(tp[0],tp[1]);ctx.stroke();
+  ctx.beginPath();ctx.arc(tp[0],tp[1],2.5,0,Math.PI*2);ctx.fillStyle='rgba(90,230,120,.85)';ctx.fill();
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────────
+function loop() {
+  tick++; frame++;
+  Object.entries(rows).forEach(([id, r]) => {
+    const safe = id.replace(/[^a-zA-Z0-9]/g,'_');
+    if (!wsMode) {
+      for(let s=0;s<SAMPLES_PER_FRAME;s++) simStep(r);
+      // update spec from sim
+    } else {
+      // spec from live emg energy
+      const rms = r.emgBuf.slice(-64).reduce((s,v)=>s+v*v,0)/64;
+      for(let b=0;b<BINS;b++){
+        const pk = b>=3&&b<=11?(1-Math.abs(b-7)/5)*Math.sqrt(rms)*1.1:0;
+        r.specBuf[b]=r.specBuf[b]*.72+Math.max(0,pk+Math.random()*.07*Math.sqrt(rms))*.28;
+      }
+    }
+    drawEMG(safe, r);
+    drawSpec(safe, r);
+    draw3D(safe, r);
+    if (frame % 8 === 0) {
+      const auxFresh = wsMode ? (r.auxLastSeen && (Date.now() - r.auxLastSeen < 500)) : true;
+      if (auxFresh) {
+        drawSpark(`as_${safe}`,[r.accH.x,r.accH.y,r.accH.z],['rgba(255,90,90,.7)','rgba(90,210,90,.7)','rgba(90,140,255,.7)']);
+        drawSpark(`gs_${safe}`,[r.gyrH.x,r.gyrH.y,r.gyrH.z],['rgba(255,90,90,.6)','rgba(90,210,90,.6)','rgba(90,140,255,.6)']);
+      }
+    }
+  });
+  if (frame % 60 === 0) {
+    const sec = ((Date.now()-startTime)/1000)|0;
+    document.getElementById('fStat').textContent = `uptime ${(sec/60|0).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
+    if (isRec) document.getElementById('fStatus').textContent = `● Recording · ${((Date.now()-recStart)/1000).toFixed(1)}s`;
+    if (detailOn) Object.keys(rows).forEach(id => buildHz(id.replace(/[^a-zA-Z0-9]/g,'_')));
+  }
+  requestAnimationFrame(loop);
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────
+function toggleDetail() {
+  detailOn=!detailOn; document.body.classList.toggle('detail',detailOn);
+  document.getElementById('detailBtn').classList.toggle('on',detailOn);
+  if(detailOn) Object.keys(rows).forEach(id=>setTimeout(()=>buildHz(id.replace(/[^a-zA-Z0-9]/g,'_')),50));
+}
+function toggleRec() {
+  isRec=!isRec; const btn=document.getElementById('recBtn'),dot=document.getElementById('recDot');
+  if(isRec){recStart=Date.now();btn.textContent='■ Stop';dot.style.display='block'}
+  else{btn.textContent='● Record';dot.style.display='none';if(!wsMode)document.getElementById('fStatus').textContent='Simulation mode'}
+}
+function showCal() {
+  const devs = wsMode ? Object.values(liveDevices) : SIM_DEVS.map(d=>({name:d.name,id:d.id}));
+  document.getElementById('calSteps').innerHTML = devs.map((d,i)=>`
+    <div class="cal-step"><div class="step-num" style="background:${COLORS[i%COLORS.length]}">${i+1}</div>
+    <div class="step-txt"><strong>${d.name}</strong> — place flat, keep still</div></div>`).join('');
+  document.getElementById('calOverlay').classList.add('show');
+}
+function hideCal(){document.getElementById('calOverlay').classList.remove('show')}
+function runCal(){alert('Would write 0x01 to calibration BLE char on each device in sequence.');hideCal()}
+function calDev(id){alert(`Calibrate ${id} individually`)}
+function exportDev(id){alert(`Export ${id} as CSV`)}
+function exportAll(){alert('Export all devices as unified CSV')}
+document.getElementById('calOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)hideCal()});
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+// Try WS first; if it fails after 1.5s fall back to simulation
+let wsConnected = false;
+const ws = new WebSocket(WS_URL);
+ws.onopen = () => { wsConnected=true; wsMode=true; connect(); };
+ws.onerror = () => {
+  if(!wsConnected) {
+    setTimeout(()=>{ if(!wsMode) initSim(); }, 1500);
+  }
+};
+ws.onclose = () => { if(!wsConnected) setTimeout(()=>{ if(!wsMode) initSim(); }, 1500); };
+
+connect();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
