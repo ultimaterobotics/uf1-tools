@@ -1,59 +1,63 @@
-# UF1 Tools
+# uf1-tools
 
-UF1 is a small unified frame format we’re using for uDevices biosignal tools.
+Python + browser workbench and protocol tools for the UF1 transport used by uMyo.
 
-This repo contains the Python-side tools and reference code for receiving, decoding, inspecting, and viewing UF1 streams. Right now the main use case is:
+**Docs:** https://make.udevices.io
+**Discord:** https://discord.com/invite/dEmCPBzv9G
 
-**uMyo → Android app over BLE GATT → UF1 over UDP → Python tools on PC**
+## What this is
 
-So this repo is basically the desktop/protocol side of that pipeline.
+Desktop tools for the uMyo BLE pipeline:
 
-## What works right now
+**uMyo → Android app (BLE GATT) → UDP → uf1-tools on PC**
 
-Current working path:
+Includes a browser-based workbench with real-time per-device EMG waveform, frequency spectrum, 3D orientation, and ACC/GYRO display. Supports 3+ simultaneous devices.
 
-- uMyo advertises and connects over BLE
-- Android app receives telemetry and raw EMG over GATT
-- Android wraps incoming data into UF1 and forwards it over UDP
-- Python tools in this repo can receive and inspect that stream
-- live raw EMG viewing works
+## Setup
 
-At the moment, the most important tools here are:
+```bash
+git clone https://github.com/ultimaterobotics/uf1-tools.git
+cd uf1-tools
+python3 -m venv venv
+source venv/bin/activate      # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+export PYTHONPATH=src         # Windows: set PYTHONPATH=src
+```
 
-- `uf1.py` — UF1 encode/decode helpers
-- `uf1_dump_udp.py` — quick UDP/UF1 packet dump
-- `uf1_view.py` — simple live raw EMG viewer
-- `uf1_probe.py` — cadence / timing / drop inspection
-- `uf1_umyo_telem15_decode.py` — decoder for the older 15-byte telemetry path
-- `uf1_adv_view.py` / `uf1_umyo_adv_decode.py` — older ADV-oriented debug tools
+## Running the workbench
 
-## Current stage
+```bash
+python tools/uf1_workbench_server.py
+# opens browser automatically
+# then tap Start GATT Raw in the Android app
+```
 
-This is still an active work-in-progress repo, but the core phone-bridge path is already real and working.
+**Start the workbench before tapping Start Streaming** — the device name frame is sent once at stream start.
 
-Right now we have:
+## Tools
 
-- UF1 spec drafted
-- Python tools working
-- Android phone bridge working
-- raw BLE GATT streaming from uMyo working
-- live viewing on PC working
+| Script | Purpose |
+|---|---|
+| `uf1_workbench_server.py` | WebSocket bridge → browser workbench |
+| `umyo_workbench.html` | Browser GUI (opens automatically) |
+| `uf1_probe.py` | Per-device stats: fps, seq gaps, IMU rates |
+| `uf1_view.py` | Simple EMG-only viewer |
 
-So the repo is past the “just a test” stage, but not yet a polished end-user toolkit.
+## What works
 
-## Next steps
+- Multi-device BLE streaming (3 simultaneous confirmed)
+- Real-time EMG waveform, spectrum, 3D orientation, ACC/GYRO sparklines per device
+- Persistent device naming across reconnects
+- OTA firmware update path (via Android app, not this repo)
 
-Planned next steps include:
+## What's not yet done
 
-- cleaning up and organizing the tools a bit more
-- recording / replay tools
-- more polished desktop receiver / GUI
-- additional stream profiles and compatibility modes
-- using UF1 as the shared format across phone, desktop, and future receivers
+- Export CSV / recording (UI present, file write not implemented)
+- USB base station mode in workbench
+- Direct PC BLE (no Android bridge)
 
-## Notes
+## Related
 
-This repo is intentionally practical and experimental for now.  
-The goal is to make the data path easy to inspect, debug, and build on.
-
-If you are here early: yes, things may still move around a bit.
+- [umyo-android](https://github.com/ultimaterobotics/umyo-android) — Android BLE bridge
+- [uMyo firmware](https://github.com/ultimaterobotics/uMyo) — device firmware
+- [uMyo_python_tools](https://github.com/ultimaterobotics/uMyo_python_tools) — older Python tools for USB base station mode
