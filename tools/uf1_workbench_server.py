@@ -83,7 +83,7 @@ class DeviceState:
     def to_json(self) -> dict:
         emg = self.emg_queue[:]
         self.emg_queue.clear()
-        return {
+        result = {
             "id": f"0x{self.dev_id:08X}",
             "name": self.name,
             "emg_fps": self.emg_fps,
@@ -104,6 +104,7 @@ class DeviceState:
         }
         self._quat_fresh = False
         self._aux_fresh = False
+        return result
 
 
 devices: dict[int, DeviceState] = {}
@@ -149,7 +150,7 @@ def parse_packet(data: bytes):
     dev._trim(dev._frame_ts, now)
 
     if dev.prev_seq is not None:
-        delta = (hdr.seq - dev.prev_seq) & 0xFFFF
+        delta = (hdr.seq - dev.prev_seq) & 0xFFFFFFFF
         if delta > 1:
             dev.seq_gaps += delta - 1
     dev.prev_seq = hdr.seq
