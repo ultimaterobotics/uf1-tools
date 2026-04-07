@@ -12,6 +12,7 @@ Desktop tools for the uMyo BLE pipeline:
 **uMyo → Android app (BLE GATT) → UDP → uf1-tools on PC**
 
 Includes a browser-based workbench with real-time per-device EMG waveform, frequency spectrum, 3D orientation, and ACC/GYRO display. Supports 3+ simultaneous devices.
+Also includes a direct PC BLE adapter that emits the same UF1 UDP stream locally.
 
 ## Setup
 
@@ -34,6 +35,23 @@ python tools/uf1_workbench_server.py
 
 **Start the workbench before tapping Start Streaming** — the device name frame is sent once at stream start.
 
+## Running direct PC BLE
+
+Start the workbench first:
+
+```bash
+python tools/uf1_workbench_server.py
+```
+
+Then in a second terminal run the BLE adapter:
+
+```bash
+python tools/uf1_umyo_ble_adapter.py --list
+python tools/uf1_umyo_ble_adapter.py --address "<device-id-from-list>"
+```
+
+Use `--all` to connect to multiple matching devices and forward them all to the workbench.
+
 ## Tools
 
 | Script | Purpose |
@@ -42,10 +60,12 @@ python tools/uf1_workbench_server.py
 | `umyo_workbench.html` | Browser GUI (opens automatically) |
 | `uf1_probe.py` | Per-device stats: fps, seq gaps, IMU rates |
 | `uf1_view.py` | Simple EMG-only viewer |
+| `uf1_umyo_ble_adapter.py` | Direct PC BLE GATT → UF1 UDP adapter |
 
 ## What works
 
 - Multi-device BLE streaming (3 simultaneous confirmed)
+- Direct PC BLE streaming to the workbench on macOS / Linux / Windows via Bleak
 - Real-time EMG waveform, spectrum, 3D orientation, ACC/GYRO sparklines per device
 - Persistent device naming across reconnects
 - OTA firmware update path (via Android app, not this repo)
@@ -54,7 +74,6 @@ python tools/uf1_workbench_server.py
 
 - Export CSV / recording (UI present, file write not implemented)
 - USB base station mode in workbench
-- Direct PC BLE (no Android bridge)
 
 ## Related
 
