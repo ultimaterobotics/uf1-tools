@@ -151,12 +151,14 @@ def encode_frame(
     blocks: List[Tuple[int, bytes]],
     stream_id: int = 0,
     crc32: bool = False,
+    flags: Optional[int] = None,
 ) -> bytes:
-    flags = TIME_US_IS_RX
-    # If STATUS present, we consider TIME_SRC_PRESENT on if caller sets it in flags later;
-    # simplest: detect STATUS block existence and set it.
-    if any(bt == BLK_STATUS for bt, _ in blocks):
-        flags |= TIME_SRC_PRESENT
+    if flags is None:
+        flags = TIME_US_IS_RX
+        # If STATUS present, we consider TIME_SRC_PRESENT on if caller sets it in flags later;
+        # simplest: detect STATUS block existence and set it.    
+        if any(bt == BLK_STATUS for bt, _ in blocks):
+            flags |= TIME_SRC_PRESENT
     if crc32:
         flags |= CRC32_PRESENT
 
